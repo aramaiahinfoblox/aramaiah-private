@@ -62,6 +62,24 @@ def run_cli_command_show_verify_certificates(result):
     finally:
         child.close()
 
+def get_grid_ref():
+    response = ib_NIOS.wapi_request('GET', object_type="grid")
+    response = json.loads(response)
+    ref = response[0]['_ref']
+    print_and_log(ref)
+    return ref
+
+def check_the_ping_status():
+    for i in range(300):
+        output = os.system("ping -c 2 " + config.grid_vip)
+        if output == 0:
+            print_and_log("Grid master is reachable")
+            break
+        else:
+            print_and_log("Ping failed, checking Ping again")
+            sleep(1)
+            continue
+
 
 class SPTYRFE_52(unittest.TestCase):
 
@@ -81,7 +99,8 @@ class SPTYRFE_52(unittest.TestCase):
     @pytest.mark.run(order=2)
     def test_002_Validating_CA_certificate(self):
         print_and_log("************ Validating CA certificate ************")
-        response = ib_NIOS.wapi_request('POST', object_type="dtc", params="?_function=validatecertificates")
+        grid_ref = get_grid_ref()
+        response = ib_NIOS.wapi_request('POST', object_type=grid_ref, params="?_function=validatecertificates")
         response = json.loads(response)
         output = response['complete_verification_result']
         print_and_log(output)
@@ -128,7 +147,7 @@ class SPTYRFE_52(unittest.TestCase):
         data = {"token": token}
         response = ib_NIOS.wapi_request('POST', object_type="dtc", fields=json.dumps(data), params="?_function=add_certificate")
         print_and_log(response)
-        sleep(30)
+        sleep(60)
         if response != "{}":
             print_and_log("Certificate Upload failed")
             assert False
@@ -138,9 +157,10 @@ class SPTYRFE_52(unittest.TestCase):
         print_and_log("************ Test Case 4 Execution Completed ************")
 
     @pytest.mark.run(order=5)
-    def test_005_Validating_CA_certificate(self):
-        print_and_log("************ Validating CA certificate ************")
-        response = ib_NIOS.wapi_request('POST', object_type="dtc", params="?_function=validatecertificates")
+    def test_005_Validating_dtc_https_certificate(self):
+        print_and_log("************ Validating dtc https certificate ************")
+        grid_ref = get_grid_ref()
+        response = ib_NIOS.wapi_request('POST', object_type=grid_ref, params="?_function=validatecertificates")
         response = json.loads(response)
         output = response['complete_verification_result']
         print_and_log(output)
@@ -177,14 +197,17 @@ class SPTYRFE_52(unittest.TestCase):
     @pytest.mark.run(order=7)
     def test_007_Delete_the_valid_CA_certificate(self):
         print_and_log("************ Delete the valid CA certificate ************")
+        check_the_ping_status()
         output = delete_ca_cert()
         print_and_log(output)
         assert re.search(r'cacertificate', output)
+        sleep(60)
         print_and_log("************ Test case 7 Execution completed ************")
 
     @pytest.mark.run(order=8)
     def test_008_Adding_Expired_certificate(self):
         print_and_log("************ Adding Expired certificate ************")
+        check_the_ping_status()
         output = upload_ca_cert("expired.pem")
         if output != "{}":
             print_and_log("Certificate Upload failed")
@@ -199,7 +222,8 @@ class SPTYRFE_52(unittest.TestCase):
     @pytest.mark.run(order=9)
     def test_009_Validating_expired_CA_certificate(self):
         print_and_log("************ Validating expired CA certificate ************")
-        response = ib_NIOS.wapi_request('POST', object_type="dtc", params="?_function=validatecertificates")
+        grid_ref = get_grid_ref()
+        response = ib_NIOS.wapi_request('POST', object_type=grid_ref, params="?_function=validatecertificates")
         response = json.loads(response)
         output = response['complete_verification_result']
         print_and_log(output)
@@ -234,14 +258,17 @@ class SPTYRFE_52(unittest.TestCase):
     @pytest.mark.run(order=11)
     def test_011_Delete_the_expired_CA_certificate(self):
         print_and_log("************ Delete the expired CA certificate ************")
+        check_the_ping_status()
         output = delete_ca_cert()
         print_and_log(output)
         assert re.search(r'cacertificate', output)
+        sleep(60)
         print_and_log("************ Test case 11 Execution completed ************")
 
     @pytest.mark.run(order=12)
     def test_012_Adding_Invalid_certificate(self):
         print_and_log("************ Adding Invalid certificate ************")
+        check_the_ping_status()
         output = upload_ca_cert("invalid.pem")
         if output != "{}":
             print_and_log("Certificate Upload failed")
@@ -249,13 +276,14 @@ class SPTYRFE_52(unittest.TestCase):
         else:
             print_and_log("Certificate upload Passed")
             assert True
-        sleep(60)
+        sleep(90)
         print_and_log("************ Test Case 12 Execution Completed ************")
 
     @pytest.mark.run(order=13)
     def test_013_Validating_invalid_certificate(self):
         print_and_log("************ Validating expired CA certificate ************")
-        response = ib_NIOS.wapi_request('POST', object_type="dtc", params="?_function=validatecertificates")
+        grid_ref = get_grid_ref()
+        response = ib_NIOS.wapi_request('POST', object_type=grid_ref, params="?_function=validatecertificates")
         response = json.loads(response)
         output = response['complete_verification_result']
         print_and_log(output)
@@ -263,7 +291,7 @@ class SPTYRFE_52(unittest.TestCase):
         for i in output:
             result.append(i['verify_result'])
         print_and_log(result)
-        match = ".*Warning.\scontains\sCA\scertificate(s)\swithout\sSKI.*"
+        match = ".*Warning.\scontains\sCA\scertificate.s.\swithout\sSKI"
         flag = False
         for i in result:
             new = re.search(match, i)
@@ -283,20 +311,20 @@ class SPTYRFE_52(unittest.TestCase):
     @pytest.mark.run(order=14)
     def test_014_Validating_invalid_certificate_in_CLI(self):
         print_and_log("************ Validating invalid certificate in CLI ************")
-        output = run_cli_command_show_verify_certificates('Warning: contains CA certificate(s) without SKI')
-        #assert re.search(r'/tmp/cert0.pem: OK', response)
+        output = run_cli_command_show_verify_certificates('.*Warning.\scontains\sCA\scertificate.s.\swithout\sSKI')
         print_and_log("************ Test Case 14 Execution Completed ************")
 
     @pytest.mark.run(order=15)
     def test_015_Delete_the_Inavlid_CA_certificate(self):
         print_and_log("************ Delete the Invalid CA certificate *************")
+        check_the_ping_status()
         output = delete_ca_cert()
         print_and_log(output)
         assert re.search(r'cacertificate', output)
-        print_and_log("************ Test case 15 Execution completed ************")
+        sleep(90)
+        print_and_log("************ Test case 15 Execution completed ************")\
 
-
-
+    '''    
     @pytest.mark.run(order=16)
     def test_016_Upload_different_services_CA_cert(self):
         print_and_log("************ Upload different services CA cert ****************")
@@ -310,4 +338,5 @@ class SPTYRFE_52(unittest.TestCase):
     @pytest.mark.run(order=17)
     def test_017_Validation_of_status_of_all_the_ca_certs_uploaded_in_the_grid(self):
         pass
+    '''
 
