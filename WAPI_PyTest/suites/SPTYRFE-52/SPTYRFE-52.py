@@ -59,8 +59,8 @@ def validate_the_httpd_restart_after_adding_and_deletion_of_ca_cert():
     print_and_log("validate the httpd restart after adding and deletion of ca cert")
     log("start", "/infoblox/var/infoblox.log", config.grid_vip)
     sleep(180)
-    LookFor1 = ".httpd CA certs changed."
-    LookFor2 = ".Apache is running."
+    LookFor1 = ".*httpd CA certs changed.*"
+    LookFor2 = ".*Apache is running.*"
     log("stop", "/infoblox/var/infoblox.log", config.grid_vip)
     log1 = logv(LookFor1, "/infoblox/var/infoblox.log", config.grid_vip)
     log2 = logv(LookFor2, "/infoblox/var/infoblox.log", config.grid_vip)
@@ -230,7 +230,6 @@ class SPTYRFE_52(unittest.TestCase):
     @pytest.mark.run(order=7)
     def test_007_Delete_the_valid_CA_certificate(self):
         print_and_log("************ Delete the valid CA certificate ************")
-        check_the_ping_status()
         output = delete_ca_cert()
         print_and_log(output)
         assert re.search(r'cacertificate', output)
@@ -240,7 +239,6 @@ class SPTYRFE_52(unittest.TestCase):
     @pytest.mark.run(order=8)
     def test_008_Adding_Expired_certificate(self):
         print_and_log("************ Adding Expired certificate ************")
-        check_the_ping_status()
         output = upload_ca_cert("expired.pem")
         if output != "{}":
             print_and_log("Certificate Upload failed")
@@ -291,7 +289,6 @@ class SPTYRFE_52(unittest.TestCase):
     @pytest.mark.run(order=11)
     def test_011_Delete_the_expired_CA_certificate(self):
         print_and_log("************ Delete the expired CA certificate ************")
-        check_the_ping_status()
         output = delete_ca_cert()
         print_and_log(output)
         assert re.search(r'cacertificate', output)
@@ -301,7 +298,6 @@ class SPTYRFE_52(unittest.TestCase):
     @pytest.mark.run(order=12)
     def test_012_Adding_Invalid_certificate(self):
         print_and_log("************ Adding Invalid certificate ************")
-        check_the_ping_status()
         output = upload_ca_cert("invalid.pem")
         if output != "{}":
             print_and_log("Certificate Upload failed")
@@ -314,7 +310,7 @@ class SPTYRFE_52(unittest.TestCase):
 
     @pytest.mark.run(order=13)
     def test_013_Validating_invalid_certificate(self):
-        print_and_log("************ Validating expired CA certificate ************")
+        print_and_log("************ Validating invalid CA certificate ************")
         grid_ref = get_grid_ref()
         response = ib_NIOS.wapi_request('POST', object_type=grid_ref, params="?_function=validatecertificates")
         response = json.loads(response)
@@ -350,7 +346,6 @@ class SPTYRFE_52(unittest.TestCase):
     @pytest.mark.run(order=15)
     def test_015_Delete_the_Inavlid_CA_certificate(self):
         print_and_log("************ Delete the Invalid CA certificate *************")
-        check_the_ping_status()
         output = delete_ca_cert()
         print_and_log(output)
         assert re.search(r'cacertificate', output)
