@@ -10,10 +10,15 @@ from os.path import join
 import json
 import time
 from time import sleep
+import datetime
 import commands
 import ib_utils.ib_NIOS as ib_NIOS
 import ib_utils.common_utilities as common_util
+from ib_utils.start_stop_logs import log_action as log
+from ib_utils.file_content_validation import log_validation as logv
 import pexpect
+import paramiko
+import subprocess
 for handler in logging.root.handlers[:]:
     logging.root.removeHandler(handler)
 logging.basicConfig(format='%(asctime)s - %(name)s(%(process)d) - %(levelname)s - %(message)s',filename="SPTYRFE_52.log" ,level=logging.INFO,filemode='w')
@@ -36,12 +41,40 @@ def upload_ca_cert(file_name):
     print_and_log(response)
     return response
 
+def command_exe(cmd):
+    try:
+        output = subprocess.check_output(cmd, shell=True)
+        logging.info(str(output))
+    except subprocess.CalledProcessError as e:
+        print_and_log(e)
+
 def delete_ca_cert():
     response = ib_NIOS.wapi_request('GET', object_type="cacertificate")
     response = json.loads(response)
     ref = response[0]['_ref']
     delete = ib_NIOS.wapi_request('DELETE', object_type=ref)
     return delete
+
+def validate_the_httpd_restart_after_adding_and_deletion_of_ca_cert():
+    print_and_log("validate the httpd restart after adding and deletion of ca cert")
+    log("start", "/infoblox/var/infoblox.log", config.grid_vip)
+    sleep(180)
+    LookFor1 = ".httpd CA certs changed."
+    LookFor2 = ".Apache is running."
+    log("stop", "/infoblox/var/infoblox.log", config.grid_vip)
+    log1 = logv(LookFor1, "/infoblox/var/infoblox.log", config.grid_vip)
+    log2 = logv(LookFor2, "/infoblox/var/infoblox.log", config.grid_vip)
+    count = 0
+    if log1 and log2:
+        print_and_log("httpd CA certs changed log is seen and Apache is running")
+        count += 1
+    if count != 1:
+        print_and_log("Log Validation failed")
+        assert False
+    else:
+        print_and_log("Log validation passed")
+        assert True
+
 
 def run_cli_command_show_verify_certificates(result):
     try:
@@ -93,7 +126,7 @@ class SPTYRFE_52(unittest.TestCase):
         else:
             print_and_log("Certificate upload Passed")
             assert True
-        sleep(60)
+        validate_the_httpd_restart_after_adding_and_deletion_of_ca_cert()
         print_and_log("************ Test Case 1 Execution Completed ************")
 
     @pytest.mark.run(order=2)
@@ -201,7 +234,7 @@ class SPTYRFE_52(unittest.TestCase):
         output = delete_ca_cert()
         print_and_log(output)
         assert re.search(r'cacertificate', output)
-        sleep(60)
+        validate_the_httpd_restart_after_adding_and_deletion_of_ca_cert()
         print_and_log("************ Test case 7 Execution completed ************")
 
     @pytest.mark.run(order=8)
@@ -215,7 +248,7 @@ class SPTYRFE_52(unittest.TestCase):
         else:
             print_and_log("Certificate upload Passed")
             assert True
-        sleep(60)
+        validate_the_httpd_restart_after_adding_and_deletion_of_ca_cert()
         print_and_log("************ Test Case 8 Execution Completed ************")
 
 
@@ -262,7 +295,7 @@ class SPTYRFE_52(unittest.TestCase):
         output = delete_ca_cert()
         print_and_log(output)
         assert re.search(r'cacertificate', output)
-        sleep(60)
+        validate_the_httpd_restart_after_adding_and_deletion_of_ca_cert()
         print_and_log("************ Test case 11 Execution completed ************")
 
     @pytest.mark.run(order=12)
@@ -276,7 +309,7 @@ class SPTYRFE_52(unittest.TestCase):
         else:
             print_and_log("Certificate upload Passed")
             assert True
-        sleep(90)
+        validate_the_httpd_restart_after_adding_and_deletion_of_ca_cert()
         print_and_log("************ Test Case 12 Execution Completed ************")
 
     @pytest.mark.run(order=13)
@@ -321,7 +354,7 @@ class SPTYRFE_52(unittest.TestCase):
         output = delete_ca_cert()
         print_and_log(output)
         assert re.search(r'cacertificate', output)
-        sleep(90)
+        validate_the_httpd_restart_after_adding_and_deletion_of_ca_cert()
         print_and_log("************ Test case 15 Execution completed ************")\
 
     '''    
