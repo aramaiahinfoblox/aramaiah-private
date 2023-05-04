@@ -407,11 +407,13 @@ class upgrade(unittest.TestCase):
 			cmd1 = os.system("netctl_system -i lan -S "+string1+" -a vlanset  -H "+config.grid1_master_ha_passive_id)
 			sleep(30)
                 	cmd2 = os.system("netctl_system -i ha -S "+string1+" -a vlanset  -H "+config.grid1_master_ha_passive_id )
-			sleep(30)
-                	child = pexpect.spawn('ssh -o StrictHostKeyChecking=no admin@'+config.grid1_master_ha_passive_ip)
-                	child.logfile=sys.stdout
-                	child.expect('password')
-                	child.sendline('infoblox')
+			sleep(60)
+			#cmd = os.system('reset_console  -H '+config.grid1_master_ha_passive_id)
+			#print('cmd is',cmd)
+			child = pexpect.spawn('ssh -o StrictHostKeyChecking=no admin@'+config.grid1_master_ha_passive_ip)
+			child.logfile=sys.stdout
+			child.expect('Are you sure you want to continue connecting.*')
+			child.sendline('yes')
                 	child.expect('Infoblox >')
                 	child.sendline('set revert_grid')
                 	child.expect('Do you want to proceed\? \(y or n\):')   
@@ -424,7 +426,7 @@ class upgrade(unittest.TestCase):
 		except Exception as error:
 			print("test 012 failed",error)
 		finally:
-                	child.sendline('exit')
+                	#child.sendline('exit')
 			child.close()
 			sleep(60)
 
@@ -433,7 +435,7 @@ class upgrade(unittest.TestCase):
 
 	@pytest.mark.run(order=13)
 	def test_013_validate_passive_joined_back_to_active_after_reverting(self):
-		sleep(1800)
+		sleep(1500)
 		#for i in range(1,40):
 		#sleep(30)
 		#status = os.system("ping -c 4 "+config.grid1_master_ha_passive_ip)
